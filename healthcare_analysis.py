@@ -173,108 +173,108 @@ plt.title("Recovery Time Distribution by Gender")
 plt.ylabel("Recovery Days")
 plt.show()
 
-# Does family history and allergy influence a patient’s diagnosis?
-# Contingency table for FamilyHistory vs Diagnosis (top 5 diagnoses)
-top_diag = df['Diagnosis'].value_counts().head(5).index
-fam_diag_ct = pd.crosstab(df[df['Diagnosis'].isin(top_diag)]['FamilyHistory'], 
-                          df[df['Diagnosis'].isin(top_diag)]['Diagnosis'])
+# 1. Does Family History or Allergies influence Diagnosis?
+top_diagnoses = df['Diagnosis'].value_counts().head(5).index
 
-print("Contingency Table: FamilyHistory vs Diagnosis")
-print(fam_diag_ct)
+# Family History vs Diagnosis
+family_table = pd.crosstab(df[df['Diagnosis'].isin(top_diagnoses)]['FamilyHistory'],
+                           df[df['Diagnosis'].isin(top_diagnoses)]['Diagnosis'])
+print("Family History vs Diagnosis")
+print(family_table)
 
 # Chi-square test
-chi2, p, dof, ex = chi2_contingency(fam_diag_ct)
-print(f"\nChi-square test for FamilyHistory and Diagnosis: p-value = {p:.4f}")
+chi2, p, _, _ = chi2_contingency(family_table)
+print(f"Chi-square test (Family History): p = {p:.4f}")
 
 # Plot
-fam_diag_ct.plot(kind='bar', stacked=True, figsize=(8,5), colormap='viridis')
-plt.title('Diagnosis Distribution by Family History')
-plt.xlabel('Family History (Yes/No)')
-plt.ylabel('Patient Count')
+family_table.plot(kind='bar', stacked=True, figsize=(8,5), colormap='viridis')
+plt.title('Diagnosis by Family History')
+plt.xlabel('Family History')
+plt.ylabel('Count')
 plt.show()
 
-allergy_diag_ct = pd.crosstab(df[df['Diagnosis'].isin(top_diag)]['Allergies'], 
-                              df[df['Diagnosis'].isin(top_diag)]['Diagnosis'])
+# Allergies vs Diagnosis
+allergy_table = pd.crosstab(df[df['Diagnosis'].isin(top_diagnoses)]['Allergies'],
+                            df[df['Diagnosis'].isin(top_diagnoses)]['Diagnosis'])
+print("Allergies vs Diagnosis")
+print(allergy_table)
 
-print("Contingency Table: Allergies vs Diagnosis")
-print(allergy_diag_ct)
+chi2, p, _, _ = chi2_contingency(allergy_table)
+print(f"Chi-square test (Allergies): p = {p:.4f}")
 
-chi2, p, dof, ex = chi2_contingency(allergy_diag_ct)
-print(f"\nChi-square test for Allergies and Diagnosis: p-value = {p:.4f}")
-
-allergy_diag_ct.plot(kind='bar', stacked=True, figsize=(8,5), colormap='plasma')
-plt.title('Diagnosis Distribution by Allergies')
-plt.xlabel('Allergies (Yes/No)')
-plt.ylabel('Patient Count')
+# Plot
+allergy_table.plot(kind='bar', stacked=True, figsize=(8,5), colormap='plasma')
+plt.title('Diagnosis by Allergy Status')
+plt.xlabel('Allergies')
+plt.ylabel('Count')
 plt.show()
 
-#Are some surgeries associated with longer treatment durations? How does this impact overall recovery?
-# Average treatment & recovery days by Surgery Type
-surgery_stats = df.groupby('Surgery_Type')[['Treatment_Days', 'Recovery_Days']].mean().sort_values('Treatment_Days', ascending=False)
+# 2. Do some surgeries take longer to treat and recover from?
+surgery_avg = df.groupby('Surgery_Type')[['Treatment_Days', 'Recovery_Days']].mean().sort_values('Treatment_Days', ascending=False)
 print("\nAverage Treatment and Recovery Days by Surgery Type:")
-print(surgery_stats)
+print(surgery_avg)
 
-# Boxplot: Treatment Days by Surgery Type (Top 5 most common surgeries)
+# Boxplot for Treatment Days (Top 5 Surgeries)
 top_surgeries = df['Surgery_Type'].value_counts().head(5).index
 plt.figure(figsize=(10,6))
 sns.boxplot(data=df[df['Surgery_Type'].isin(top_surgeries)], x='Surgery_Type', y='Treatment_Days', palette='Set2')
-plt.title('Treatment Duration by Surgery Type')
+plt.title('Treatment Days by Surgery Type')
 plt.xlabel('Surgery Type')
 plt.ylabel('Treatment Days')
 plt.xticks(rotation=45)
 plt.show()
 
-# Correlation between Treatment_Days and Recovery_Days overall
-corr, p_val = stats.pearsonr(df['Treatment_Days'], df['Recovery_Days'])
-print(f"Pearson correlation between Treatment and Recovery Days: r = {corr:.3f}, p = {p_val:.4f}")
+# Correlation between Treatment and Recovery Days
+corr, p_val = pearsonr(df['Treatment_Days'], df['Recovery_Days'])
+print(f"Correlation between Treatment and Recovery Days: r = {corr:.3f}, p = {p_val:.4f}")
 
 # Scatterplot with regression line
 sns.lmplot(data=df, x='Treatment_Days', y='Recovery_Days', aspect=1.5)
-plt.title('Treatment Duration vs Recovery Time')
+plt.title('Treatment vs Recovery Duration')
 plt.xlabel('Treatment Days')
 plt.ylabel('Recovery Days')
 plt.show()
 
-#Do hospitals impact recovery time of the most frequently treated diagnosis?
-# Find most frequent diagnosis
-top_diag_name = df['Diagnosis'].value_counts().idxmax()
-print(f"Most Frequent Diagnosis: {top_diag_name}")
+# 3. Do hospitals affect recovery time for the most common diagnosis?
+top_diagnosis = df['Diagnosis'].value_counts().idxmax()
+print(f"Top Diagnosis: {top_diagnosis}")
 
-# Filter data for this diagnosis
-df_diag = df[df['Diagnosis'] == top_diag_name]
+# Filter data
+df_top_diag = df[df['Diagnosis'] == top_diagnosis]
+top_hospitals = df_top_diag['Hospital_Name'].value_counts().head(5).index
 
-# Boxplot: Recovery time by Hospital
+# Boxplot: Recovery Days by Hospital
 plt.figure(figsize=(12,6))
-top_hospitals = df_diag['Hospital_Name'].value_counts().head(5).index
-sns.boxplot(data=df_diag[df_diag['Hospital_Name'].isin(top_hospitals)], x='Hospital_Name', y='Recovery_Days', palette='Set3')
-plt.title(f'Recovery Time by Hospital for Diagnosis: {top_diag_name}')
+sns.boxplot(data=df_top_diag[df_top_diag['Hospital_Name'].isin(top_hospitals)], 
+            x='Hospital_Name', y='Recovery_Days', palette='Set3')
+plt.title(f'Recovery Days by Hospital ({top_diagnosis})')
 plt.xlabel('Hospital')
 plt.ylabel('Recovery Days')
 plt.xticks(rotation=45)
 plt.show()
 
-# ANOVA test: Does Hospital significantly impact Recovery Time?
-model = ols('Recovery_Days ~ C(Hospital_Name)', data=df_diag[df_diag['Hospital_Name'].isin(top_hospitals)]).fit()
-anova_table = sm.stats.anova_lm(model, typ=2)
-print("\nANOVA results for Hospital impact on Recovery Days:")
-print(anova_table)
+# ANOVA test
+model = ols('Recovery_Days ~ C(Hospital_Name)', data=df_top_diag[df_top_diag['Hospital_Name'].isin(top_hospitals)]).fit()
+anova_results = sm.stats.anova_lm(model, typ=2)
+print("\nANOVA: Hospital Impact on Recovery Days")
+print(anova_results)
 
-#How does Age Group impact Treatment & Recovery?
+# 4. How does Age Group affect Treatment and Recovery?
 plt.figure(figsize=(10,5))
 sns.boxplot(data=df, x='Age_Group', y='Treatment_Days', palette='pastel')
-plt.title('Treatment Duration by Age Group')
+plt.title('Treatment Days by Age Group')
 plt.ylabel('Treatment Days')
 plt.show()
 
 plt.figure(figsize=(10,5))
 sns.boxplot(data=df, x='Age_Group', y='Recovery_Days', palette='pastel')
-plt.title('Recovery Time by Age Group')
+plt.title('Recovery Days by Age Group')
 plt.ylabel('Recovery Days')
 plt.show()
 
-#Are there differences in Recovery Time by Gender and Allergies?
+# 5. Do Gender and Allergies affect Recovery?
 plt.figure(figsize=(10,5))
 sns.boxplot(data=df, x='Gender', y='Recovery_Days', hue='Allergies', palette='Set1')
-plt.title('Recovery Time by Gender and Allergy Status')
+plt.title('Recovery Days by Gender and Allergy Status')
 plt.ylabel('Recovery Days')
 plt.show()
