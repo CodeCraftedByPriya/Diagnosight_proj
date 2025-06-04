@@ -298,18 +298,18 @@ df['Diagnosis_encoded'] = le_diag.fit_transform(df['Diagnosis'])
 features = ['Age', 'Gender_encoded', 'Diagnosis_encoded', 'Allergies_encoded']
 target = 'Recovery_Days'
 
-X = df[features]
+x = df[features]
 y = df[target]
 
 # Split dataset
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
 
 # Train model
 model = RandomForestRegressor(random_state=42)
-model.fit(X_train, y_train)
+model.fit(x_train, y_train)
 
 # Evaluate performance
-y_pred = model.predict(X_test)
+y_pred = model.predict(x_test)
 print("Mean Absolute Error:", mean_absolute_error(y_test, y_pred))
 print("R² Score:", r2_score(y_test, y_pred))
 
