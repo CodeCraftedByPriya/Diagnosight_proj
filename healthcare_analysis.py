@@ -339,5 +339,18 @@ def categorize_sentiment(polarity):
 
 df['Sentiment'] = df['Polarity'].apply(categorize_sentiment)
 
-# Step 3: Check results
+# Check results
 print(df[['Feedback', 'Polarity', 'Sentiment']].head(10))
+
+# Chart or the results
+# Count the number of feedbacks in each sentiment category
+sentiment_counts = df['Sentiment'].value_counts()
+
+# Plot a bar chart
+plt.figure(figsize=(8,5))
+sns.barplot(x=sentiment_counts.index, y=sentiment_counts.values, palette='viridis')
+
+plt.title('Sentiment Distribution of Patient Feedback')
+plt.xlabel('Sentiment')
+plt.ylabel('Number of Feedbacks')
+plt.show()
