@@ -342,94 +342,112 @@ plt.xlabel('Sentiment')
 plt.ylabel('Number of Feedbacks')
 plt.show()
 
-# Preprocess the data
-X = df.drop('Diagnosis', axis=1)
-y = df['Diagnosis']
+# Features & targets
+X = df[['Age', 'Gender', 'Heart_Rate', 'Temperature', 'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']]
+y_cls = df['Diagnosis']
+y_reg = df['Recovery_Days']
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Encode Lab Test Results if not already numeric
+if X['Lab_Test_Results'].dtype == 'object':
+    X['Lab_Test_Results'] = LabelEncoder().fit_transform(X['Lab_Test_Results'])
 
-# Train the Random Forest Classifier model
-rf_classifier = RandomForestClassifier(random_state=42)
-rf_classifier.fit(X_train, y_train)
+# Scale numeric values
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
 
-# Make predictions on the testing set
-y_pred_rf = rf_classifier.predict(X_test)
-
-# Evaluate the model
-print("Random Forest Classifier Model Evaluation:")
-print("Accuracy:", accuracy_score(y_test, y_pred_rf))
-print("Classification Report:")
-print(classification_report(y_test, y_pred_rf))
-print("Confusion Matrix:")
-print(confusion_matrix(y_test, y_pred_rf))
-
-# Train the XGBoost model
-xgb_model = xgb.XGBClassifier(objective='multi:softmax', num_class=3)
-xgb_model.fit(X_train, y_train)
-
-# Make predictions on the testing set
-y_pred_xgb = xgb_model.predict(X_test)
-
-# Evaluate the model
-print("XGBoost Model Evaluation:")
-print("Accuracy:", accuracy_score(y_test, y_pred_xgb))
-print("Classification Report:")
-print(classification_report(y_test, y_pred_xgb))
-print("Confusion Matrix:")
-print(confusion_matrix(y_test, y_pred_xgb))
-
-# Define the hyperparameter tuning space
-param_grid = {
-    'max_depth': [3, 5, 7],
-    'learning_rate': [0.1, 0.5, 1],
-    'n_estimators': [50, 100, 200],
-    'gamma': [0, 0.1, 0.5],
-    'subsample': [0.5, 0.8, 1],
-    'colsample_bytree': [0.5, 0.8, 1],
-    'reg_alpha': [0, 0.1, 0.5],
-    'reg_lambda': [0, 0.1, 0.5]
+# Split and Train Classification (Diagnosis)
+X_train_cls, X_test_cls, y_train_cls, y_test_cls = train_test_split(X_scaled, y_cls, test_size=0.2, random_state=42)
+class_models = {
+    'RandomForest': RandomForestClassifier(),
+    'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss'),
+    'KNN': KNeighborsClassifier(),
+    'LogisticRegression': LogisticRegression(max_iter=500),
+    'SVM': SVC()
 }
 
-# Perform hyperparameter tuning using GridSearchCV
-grid_search = GridSearchCV(xgb.XGBClassifier(objective='multi:softmax', num_class=3), param_grid, cv=5, scoring='accuracy')
-grid_search.fit(X_train, y_train)
+print("\nDiagnosis Prediction - Classification Results:\n")
+best_acc, best_cls_model = 0, None
+for name, model in class_models.items():
+    model.fit(X_train_cls, y_train_cls)
+    pred = model.predict(X_test_cls)
+    acc = accuracy_score(y_test_cls, pred)
+    print(f"{name}: Accuracy = {acc:.4f}")
+    if acc > best_acc:
+        best_acc = acc
+        best_cls_model = model
 
-# Print the best hyperparameters and the corresponding accuracy
-print("Best Hyperparameters:", grid_search.best_params_)
-print("Best Accuracy:", grid_search.best_score_)
-
-def predict_diagnosis(input_data):
-    # Convert input data to DataFrame
-    input_df = pd.DataFrame([input_data])
-    
-    # Encode categorical variables
-    input_df['Gender'] = label_encoders['Gender'].transform(input_df['Gender'])
-    input_df['Medication'] = label_encoders['Medication'].transform(input_df['Medication'])
-    
-    # Make predictions
-    diagnosis_prediction = xgb_model.predict(input_df)
-    
-    # Decode the diagnosis
-    diagnosis_decoded = label_encoders['Diagnosis'].inverse_transform(diagnosis_prediction)
-    
-    return diagnosis_decoded[0]
-
-# Example user input
-user_input = {
-    'Age': ,
-    'Gender': 'Male',
-    'Heart_Rate': 85,
-    'Temperature': 99.0,
-    'Systolic': 140,
-    'Diastolic': 90,
-    'X-ray_Result': 'Normal',  # Assuming you have a way to encode this
-    'Lab_Test_Results': 'Normal',  # Assuming you have a way to encode this
-    'Medication': 'Metformin'
+# Split and Train Regression (Recovery Days)
+X_train_reg, X_test_reg, y_train_reg, y_test_reg = train_test_split(X_scaled, y_reg, test_size=0.2, random_state=42)
+reg_models = {
+    'RandomForestRegressor': RandomForestRegressor(),
+    'XGBoostRegressor': XGBRegressor(),
+    'LinearRegression': LinearRegression(),
+    'GradientBoosting': GradientBoostingRegressor(),
+    'SVR': SVR()
 }
 
-# Make prediction
-predicted_diagnosis = predict_diagnosis(user_input)
-print(f"Predicted Diagnosis: {predicted_diagnosis}")
+print("\nRecovery Time Prediction - Regression Results:\n")
+best_r2, best_reg_model = -1, None
+for name, model in reg_models.items():
+    model.fit(X_train_reg, y_train_reg)
+    pred = model.predict(X_test_reg)
+    r2 = r2_score(y_test_reg, pred)
+    mae = mean_absolute_error(y_test_reg, pred)
+    print(f"{name}: R2 = {r2:.4f}, MAE = {mae:.2f}")
+    if r2 > best_r2:
+        best_r2 = r2
+        best_reg_model = model
 
+# Save best models and scaler
+joblib.dump(best_cls_model, 'diagnosis_model.pkl')
+joblib.dump(best_reg_model, 'recovery_model.pkl')
+joblib.dump(scaler, 'scaler.pkl')
+joblib.dump(le, 'diagnosis_encoder.pkl')
 
+'''Flask Deployment
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return render_template('form.html')
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Load models and scaler
+    clf_model = joblib.load('diagnosis_model.pkl')
+    reg_model = joblib.load('recovery_model.pkl')
+    scaler = joblib.load('scaler.pkl')
+
+    # Get form values
+    try:
+        age = int(request.form['age'])
+        gender = 0 if request.form['gender'] == 'Male' else 1
+        heart_rate = float(request.form['heart_rate'])
+        temp = float(request.form['temperature'])
+        sat = float(request.form['sat'])
+        treatment_days = convert_duration(request.form['treatment_duration'])
+        systolic = float(request.form['systolic'])
+        diastolic = float(request.form['diastolic'])
+        xray = 0 if request.form['xray_result'] == 'Normal' else 1
+        allergies = 1 if request.form['allergies'] == 'Yes' else 0
+        fam_hist = 1 if request.form['family_history'] == 'Yes' else 0
+        hypertension = 1 if (systolic >= 130 or diastolic >= 80) else 0
+
+        # Create feature vector
+        input_data = [[age, gender, heart_rate, temp, sat, treatment_days,
+                       systolic, diastolic, xray, allergies, fam_hist, hypertension]]
+
+        input_scaled = scaler.transform(input_data)
+
+        # Predictions
+        diagnosis_pred = clf_model.predict(input_scaled)[0]
+        recovery_pred = reg_model.predict(input_scaled)[0]
+
+        return render_template('result.html', diagnosis=diagnosis_pred, recovery_days=round(recovery_pred))
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+if __name__ == '__main__':
+    app.run(debug=True)
+'''
