@@ -25,10 +25,13 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 import plotly.express as px
+from flask import Flask, render_template, request
+import joblib
 
 
 # Load dataset
 df = pd.read_csv("healthcare_dataset.csv")
+
 
 # DATA CLEANING AND ENCODING
 df.drop(columns=['Patient_ID', 'Name', 'Address'], errors='ignore', inplace=True)
@@ -82,33 +85,20 @@ df.drop('Blood_Pressure', axis=1, inplace=True)
 df['SAT'] = pd.to_numeric(df['SAT'], errors='coerce')
 
 # Fill missing values
-# Numeric columns - fill missing with median
 numeric_cols = df.select_dtypes(include=[np.number]).columns
 for col in numeric_cols:
     df[col].fillna(df[col].median(), inplace=True)
 
-# Categorical columns - fill missing with mode
 categorical_cols = df.select_dtypes(include=['object']).columns
 for col in categorical_cols:
     df[col].fillna(df[col].mode()[0], inplace=True)
 
-
-# Encode categorical variables
-df['Gender'] = df['Gender'].map({'Male': 0, 'Female': 1})
+# Encode categorical
+le_gender = LabelEncoder()
+df['Gender'] = le_gender.fit_transform(df['Gender'])
 df['X-ray_Results'] = df['X-ray_Results'].map({'Normal': 0, 'Abnormal': 1})
 df['Allergies'] = df['Allergies'].map({'No': 0, 'Yes': 1})
 
-# Encode categorical variables
-label_encoders = {}
-for column in ['Gender', 'Diagnosis', 'Medication']:
-    le = LabelEncoder()
-    df[column] = le.fit_transform(df[column])
-    label_encoders[column] = le
-
-# Features and target variable
-X = df.drop(columns=['Diagnosis', 'Recovery_Days'])
-y_diagnosis = df['Diagnosis']
-y_recovery = df['Recovery_Days']
 
 # Fill missing values with median for numeric columns
 df.fillna(df.median(numeric_only=True), inplace=True)
@@ -226,6 +216,7 @@ fig = px.bar(recovery_by_hospital, x='Hospital_Name', y='Recovery_Days', title='
 fig.update_layout(xaxis={'categoryorder':'total ascending'})
 fig.show()
 
+
 # 1. Does Family History or Allergies Influence Diagnosis?
 top_diagnoses = df['Diagnosis'].value_counts().head(5).index
 df_top_diag = df[df['Diagnosis'].isin(top_diagnoses)]
@@ -330,36 +321,65 @@ plt.ylabel('Recovery Days')
 plt.show()
 
 
+
 # SENTIMENT ANALYSIS
 df['Polarity'] = df['Feedback'].apply(lambda text: TextBlob(str(text)).sentiment.polarity)
 df['Sentiment'] = df['Polarity'].apply(lambda p: 'Positive' if p > 0 else 'Negative' if p < 0 else 'Neutral')
 
-# Plot sentiment distribution
+# Count and percentage
+sentiment_counts = df['Sentiment'].value_counts(normalize=True).mul(100).round(2)  # % values
+sentiment_order = ['Positive', 'Neutral', 'Negative']  # Ensures consistent order
+
+# Plot
 plt.figure(figsize=(8, 5))
-sns.countplot(data=df, x='Sentiment')
+ax = sns.countplot(data=df, x='Sentiment', order=sentiment_order)
+
+# Annotate with percentage
+for p in ax.patches:
+    count = p.get_height()
+    sentiment = p.get_x() + p.get_width() / 2
+    percent = (count / len(df)) * 100
+    ax.annotate(f'{percent:.1f}%', (p.get_x() + p.get_width() / 2, count),
+                ha='center', va='bottom', fontsize=12)
+
+# Labels and styling
 plt.title('Sentiment Distribution of Patient Feedback')
 plt.xlabel('Sentiment')
 plt.ylabel('Number of Feedbacks')
+plt.tight_layout()
 plt.show()
 
+
+
 # Features & targets
-X = df[['Age', 'Gender', 'Heart_Rate', 'Temperature', 'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']]
+X = df[['Age', 'Gender', 'Heart_Rate', 'Temperature', 'Systolic', 'Diastolic',
+        'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']]
 y_cls = df['Diagnosis']
 y_reg = df['Recovery_Days']
 
-# Encode Lab Test Results if not already numeric
+# Drop rare diagnosis classes (only keep those with ≥ 2 samples)
+valid_classes = y_cls.value_counts()[y_cls.value_counts() >= 2].index
+X = X[y_cls.isin(valid_classes)].copy()
+y_cls = y_cls[y_cls.isin(valid_classes)]
+y_reg = y_reg.loc[y_cls.index]
+
+# Encode Lab Test Results if categorical
 if X['Lab_Test_Results'].dtype == 'object':
     X['Lab_Test_Results'] = LabelEncoder().fit_transform(X['Lab_Test_Results'])
 
-# Scale numeric values
+# Scale features
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Split and Train Classification (Diagnosis)
-X_train_cls, X_test_cls, y_train_cls, y_test_cls = train_test_split(X_scaled, y_cls, test_size=0.2, random_state=42)
+# Classification split
+sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+for train_idx, test_idx in sss.split(X_scaled, y_cls):
+    X_train_cls, X_test_cls = X_scaled[train_idx], X_scaled[test_idx]
+    y_train_cls, y_test_cls = y_cls.iloc[train_idx], y_cls.iloc[test_idx]
+
+# Classification models
 class_models = {
     'RandomForest': RandomForestClassifier(),
-    'XGBoost': XGBClassifier(use_label_encoder=False, eval_metric='mlogloss'),
     'KNN': KNeighborsClassifier(),
     'LogisticRegression': LogisticRegression(max_iter=500),
     'SVM': SVC()
@@ -369,15 +389,18 @@ print("\nDiagnosis Prediction - Classification Results:\n")
 best_acc, best_cls_model = 0, None
 for name, model in class_models.items():
     model.fit(X_train_cls, y_train_cls)
-    pred = model.predict(X_test_cls)
-    acc = accuracy_score(y_test_cls, pred)
+    preds = model.predict(X_test_cls)
+    acc = accuracy_score(y_test_cls, preds)
     print(f"{name}: Accuracy = {acc:.4f}")
     if acc > best_acc:
         best_acc = acc
         best_cls_model = model
 
-# Split and Train Regression (Recovery Days)
-X_train_reg, X_test_reg, y_train_reg, y_test_reg = train_test_split(X_scaled, y_reg, test_size=0.2, random_state=42)
+# Regression split
+X_train_reg, X_test_reg, y_train_reg, y_test_reg = train_test_split(
+    X_scaled, y_reg, test_size=0.2, random_state=42)
+
+# Regression models
 reg_models = {
     'RandomForestRegressor': RandomForestRegressor(),
     'XGBoostRegressor': XGBRegressor(),
@@ -390,64 +413,125 @@ print("\nRecovery Time Prediction - Regression Results:\n")
 best_r2, best_reg_model = -1, None
 for name, model in reg_models.items():
     model.fit(X_train_reg, y_train_reg)
-    pred = model.predict(X_test_reg)
-    r2 = r2_score(y_test_reg, pred)
-    mae = mean_absolute_error(y_test_reg, pred)
+    preds = model.predict(X_test_reg)
+    r2 = r2_score(y_test_reg, preds)
+    mae = mean_absolute_error(y_test_reg, preds)
     print(f"{name}: R2 = {r2:.4f}, MAE = {mae:.2f}")
     if r2 > best_r2:
         best_r2 = r2
         best_reg_model = model
 
-# Save best models and scaler
+# Save models and scaler
 joblib.dump(best_cls_model, 'diagnosis_model.pkl')
 joblib.dump(best_reg_model, 'recovery_model.pkl')
 joblib.dump(scaler, 'scaler.pkl')
-joblib.dump(le, 'diagnosis_encoder.pkl')
 
-'''Flask Deployment
+
+
+# Load models and tools
+clf_model = joblib.load('diagnosis_model.pkl')
+reg_model = joblib.load('recovery_model.pkl')
+scaler = joblib.load('scaler.pkl')
+
+# Define the feature order
+feature_cols = ['Age', 'Gender', 'Heart_Rate', 'Temperature',
+                'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']
+
+# --- Scenario 1: Mr. Harry ---
+harry_input = {
+    'Age': 70,
+    'Gender': 0,  # Male
+    'Heart_Rate': 60,
+    'Temperature': 97,
+    'Systolic': 120,
+    'Diastolic': 80,
+    'X-ray_Results': 1,  # Abnormal
+    'Lab_Test_Results': 83,
+}
+harry_input['Hypertension_Risk'] = 1 if (harry_input['Systolic'] >= 130 or harry_input['Diastolic'] >= 80) else 0
+
+harry_df = pd.DataFrame([harry_input], columns=feature_cols)
+harry_scaled = scaler.transform(harry_df)
+harry_pred = clf_model.predict(harry_scaled)[0]
+
+print("\n--- Scenario 1: Diagnosis Prediction for Mr. Harry ---")
+print(f"Predicted Diagnosis: {harry_pred}")
+
+# --- Scenario 2: Ms. Reena ---
+reena_input = {
+    'Age': 40,
+    'Gender': 1,  # Female
+    'Heart_Rate': 75,
+    'Temperature': 98.6,
+    'Systolic': 120,
+    'Diastolic': 75,
+    'X-ray_Results': 0,  # Normal
+    'Lab_Test_Results': 90,
+}
+reena_input['Hypertension_Risk'] = 1 if (reena_input['Systolic'] >= 130 or reena_input['Diastolic'] >= 80) else 0
+
+reena_df = pd.DataFrame([reena_input], columns=feature_cols)
+reena_scaled = scaler.transform(reena_df)
+reena_pred_days = reg_model.predict(reena_scaled)[0]
+
+print("\n--- Scenario 2: Recovery Time Prediction for Ms. Reena ---")
+print(f"Predicted Recovery Time (in days): {round(reena_pred_days, 1)}")
+
+from flask import Flask, request, jsonify, render_template
+import joblib
+import numpy as np
+import os
+
 app = Flask(__name__)
+
+# Load models and scaler
+clf_model = joblib.load("diagnosis_model.pkl")
+reg_model = joblib.load("recovery_model.pkl")
+scaler = joblib.load("scaler.pkl")
+
+# Define the order of input features
+feature_cols = ['Age', 'Gender', 'Heart_Rate', 'Temperature',
+                'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']
 
 @app.route('/')
 def home():
-    return render_template('form.html')
+    return render_template('webpage.html')  # your first page
+
+@app.route('/analytics')
+def analytics():
+    return render_template('analytics.html')  # your second page with charts
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Load models and scaler
-    clf_model = joblib.load('diagnosis_model.pkl')
-    reg_model = joblib.load('recovery_model.pkl')
-    scaler = joblib.load('scaler.pkl')
+    data = request.json
 
-    # Get form values
+    # Extract and validate values
     try:
-        age = int(request.form['age'])
-        gender = 0 if request.form['gender'] == 'Male' else 1
-        heart_rate = float(request.form['heart_rate'])
-        temp = float(request.form['temperature'])
-        sat = float(request.form['sat'])
-        treatment_days = convert_duration(request.form['treatment_duration'])
-        systolic = float(request.form['systolic'])
-        diastolic = float(request.form['diastolic'])
-        xray = 0 if request.form['xray_result'] == 'Normal' else 1
-        allergies = 1 if request.form['allergies'] == 'Yes' else 0
-        fam_hist = 1 if request.form['family_history'] == 'Yes' else 0
-        hypertension = 1 if (systolic >= 130 or diastolic >= 80) else 0
+        features = [
+            data['age'],
+            data['gender'],
+            data['heart_rate'],
+            data['temperature'],
+            data['systolic'],
+            data['diastolic'],
+            data['xray'],
+            data['lab'],
+            data['hypertension_risk']
+        ]
+        input_array = np.array(features).reshape(1, -1)
+        scaled_input = scaler.transform(input_array)
 
-        # Create feature vector
-        input_data = [[age, gender, heart_rate, temp, sat, treatment_days,
-                       systolic, diastolic, xray, allergies, fam_hist, hypertension]]
+        # Predict
+        diagnosis = clf_model.predict(scaled_input)[0]
+        recovery_days = reg_model.predict(scaled_input)[0]
 
-        input_scaled = scaler.transform(input_data)
-
-        # Predictions
-        diagnosis_pred = clf_model.predict(input_scaled)[0]
-        recovery_pred = reg_model.predict(input_scaled)[0]
-
-        return render_template('result.html', diagnosis=diagnosis_pred, recovery_days=round(recovery_pred))
+        return jsonify({
+            'diagnosis': str(diagnosis),
+            'recovery': round(float(recovery_days), 1)
+        })
 
     except Exception as e:
-        return f"Error: {str(e)}"
+        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-'''
