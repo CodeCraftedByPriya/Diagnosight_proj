@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SMART HEALTHCARE PREDICTION</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f4f7f8;
+      color: #114b5f;
+    }
+    header {
+      text-align: center;
+      padding: 30px 10px 10px;
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #117a8b, #4a90e2);
+      color: white;
+    }
+    nav {
+      background: #e4f1f4;
+      padding: 10px 0;
+      text-align: center;
+    }
+    nav a {
+      margin: 0 20px;
+      text-decoration: none;
+      font-weight: 600;
+      color: #0b3d91;
+    }
+    .container {
+      max-width: 960px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(17, 75, 95, 0.1);
+    }
+    h2 {
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+      color: #117a8b;
+    }
+    label {
+      display: block;
+      margin-top: 20px;
+      font-weight: 600;
+      color: #0b3d91;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border-radius: 10px;
+      border: 2px solid #117a8b;
+      margin-top: 5px;
+      font-size: 16px;
+    }
+    button {
+      margin-top: 30px;
+      padding: 14px;
+      width: 100%;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #117a8b, #4a90e2);
+      color: white;
+      font-size: 16px;
+      font-weight: 700;
+      border: none;
+    }
+    .result {
+      font-size: 18px;
+      margin-top: 30px;
+      font-weight: 600;
+      color: #0b3d91;
+    }
+    .chart-container {
+      margin-top: 30px;
+      background: #f0f7f8;
+      padding: 20px;
+      border-radius: 16px;
+    }
+    canvas {
+      width: 100% !important;
+      height: auto !important;
+    }
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      font-style: italic;
+      background: #f4f7f8;
+      color: #117a8b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>SMART HEALTHCARE PREDICTION</header>
+
+  <nav>
+    <a href="/">Home</a>
+    <a href="/analytics">Analytics</a>
+  </nav>
+
+  <main class="container">
+    <h2>Input Panel</h2>
+    <form id="predictionForm">
+      <label>Age</label>
+      <input type="number" id="age" required />
+
+      <label>Gender</label>
+      <select id="gender" required>
+        <option value="">Select Gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+      </select>
+
+      <label>Heart Rate (bpm)</label>
+      <input type="number" id="heartRate" required />
+
+      <label>Body Temperature (°F)</label>
+      <input type="number" id="temperature" required />
+
+      <label>Systolic BP</label>
+      <input type="number" id="systolic" required />
+
+      <label>Diastolic BP</label>
+      <input type="number" id="diastolic" required />
+
+      <label>X-ray Result</label>
+      <select id="xray" required>
+        <option value="">Select</option>
+        <option value="Normal">Normal</option>
+        <option value="Abnormal">Abnormal</option>
+      </select>
+
+      <label>Lab Test Result</label>
+      <input type="number" id="lab" required />
+
+      <button type="submit">Predict</button>
+    </form>
+
+    <div class="result" id="resultBox">
+      Diagnosis: --<br />
+      Estimated Recovery: -- days
+    </div>
+
+    <div class="chart-container">
+      <canvas id="sentimentChart"></canvas>
+    </div>
+  </main>
+
+  <footer>
+    "Every step forward is a step toward a healthier tomorrow."
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.getElementById("predictionForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const data = {
+        age: parseInt(document.getElementById("age").value),
+        gender: document.getElementById("gender").value === "Male" ? 0 : 1,
+        heart_rate: parseFloat(document.getElementById("heartRate").value),
+        temperature: parseFloat(document.getElementById("temperature").value),
+        systolic: parseFloat(document.getElementById("systolic").value),
+        diastolic: parseFloat(document.getElementById("diastolic").value),
+        xray: document.getElementById("xray").value === "Abnormal" ? 1 : 0,
+        lab: parseFloat(document.getElementById("lab").value)
+      };
+      data.hypertension_risk = (data.systolic >= 130 || data.diastolic >= 80) ? 1 : 0;
+
+      fetch('/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => res.json())
+      .then(res => {
+        document.getElementById("resultBox").innerHTML = `Diagnosis: <em>${res.diagnosis}</em><br/>Estimated Recovery: <em>${res.recovery} days</em>`;
+      })
+      .catch(err => {
+        console.error("Prediction Error:", err);
+        document.getElementById("resultBox").innerHTML = `<em>Error fetching prediction. Please try again.</em>`;
+      });
+    });
+
+    const ctx = document.getElementById('sentimentChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Positive', 'Neutral', 'Negative'],
+        datasets: [{
+          label: 'Feedback Sentiment',
+          data: [55, 30, 15],
+          backgroundColor: ['#4a90e2', '#7ec8ca', '#186a89']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: 'Patient Feedback Sentiment Distribution'
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

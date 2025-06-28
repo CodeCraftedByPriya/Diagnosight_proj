@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMART HEALTHCARE PREDICTION - Analytics</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f4f7f8;
+      color: #114b5f;
+    }
+    header {
+      text-align: center;
+      padding: 30px 10px 10px;
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #117a8b, #4a90e2);
+      color: white;
+    }
+    nav {
+      background: #e4f1f4;
+      padding: 10px 0;
+      text-align: center;
+    }
+    nav a {
+      margin: 0 20px;
+      text-decoration: none;
+      font-weight: 600;
+      color: #0b3d91;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(17, 75, 95, 0.1);
+    }
+    h2 {
+      color: #117a8b;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 30px;
+    }
+    .chart-box {
+      background: #f0f7f8;
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+    }
+    .chart-box img {
+      max-width: 100%;
+      border-radius: 12px;
+    }
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      font-style: italic;
+      background: #f4f7f8;
+      color: #117a8b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>SMART HEALTHCARE PREDICTION</header>
+
+  <nav>
+    <a href="/">Home</a>
+    <a href="/analytics">Analytics</a>
+  </nav>
+
+  <main class="container">
+    <h2>Data Analytics Dashboard</h2>
+    <div class="chart-grid">
+      <div class="chart-box">
+        <h3>Age Distribution</h3>
+        <img src="/static/age_distribution.png" alt="Age Distribution" />
+      </div>
+      <div class="chart-box">
+        <h3>Treatment Duration</h3>
+        <img src="/static/treatment_distribution.png" alt="Treatment Days" />
+      </div>
+      <div class="chart-box">
+        <h3>Recovery Time</h3>
+        <img src="/static/recovery_distribution.png" alt="Recovery Days" />
+      </div>
+      <div class="chart-box">
+        <h3>SAT Scores</h3>
+        <img src="/static/sat_distribution.png" alt="SAT Scores" />
+      </div>
+      <div class="chart-box">
+        <h3>Correlation Heatmap</h3>
+        <img src="/static/correlation_heatmap.png" alt="Correlation Heatmap" />
+      </div>
+      <div class="chart-box">
+        <h3>Top 10 Diagnosis Avg Recovery</h3>
+        <img src="/static/top10_diagnosis_recovery.png" alt="Top 10 Diagnosis Recovery" />
+      </div>
+      <div class="chart-box">
+        <h3>Sentiment Analysis</h3>
+        <img src="/static/sentiment_distribution.png" alt="Sentiment" />
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    "Every chart tells a story."
+  </footer>
+</body>
+</html>
