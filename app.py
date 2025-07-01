@@ -27,6 +27,7 @@ from sklearn.impute import SimpleImputer
 import plotly.express as px
 from flask import Flask, render_template, request
 import joblib
+import plotly.express as px
 
 
 # Load dataset
@@ -206,17 +207,17 @@ plt.xlabel("Average Recovery Days")
 plt.savefig(static_path + "avg_recovery_top10.png")
 plt.close()
 
-# Interactive bar chart for SAT by Doctor
+# 10. SAT by Doctor
 avg_sat = df.groupby('Doctor_Name')['SAT'].mean().sort_values().reset_index()
 fig = px.bar(avg_sat, x='Doctor_Name', y='SAT', title='Average SAT per Doctor')
 fig.update_layout(xaxis={'categoryorder':'total ascending'})
-fig.show()
+fig.write_image(static_path + "avg_sat_doctor.png")
 
-# Interactive bar chart for Recovery Time by Hospital
+# 11. Recovery Time by Hospital
 recovery_by_hospital = df.groupby('Hospital_Name')['Recovery_Days'].mean().sort_values().reset_index()
 fig = px.bar(recovery_by_hospital, x='Hospital_Name', y='Recovery_Days', title='Avg Recovery Time by Hospital', color='Recovery_Days')
 fig.update_layout(xaxis={'categoryorder':'total ascending'})
-fig.show()
+fig.write_image(static_path + "recovery_hospital.png")
 
 
 # 1. Does Family History or Allergies Influence Diagnosis?
@@ -256,7 +257,6 @@ if not allergy_crosstab.empty:
 else:
     print("No valid data found for Allergies vs Diagnosis. Skipping analysis.")
 
-# Insight: If p < 0.05, it indicates a statistically significant relationship.
 
 # 2. Do Some Surgeries Take Longer to Treat and Recover From?
 surgery_avg = df.groupby('Surgery_Type')[['Treatment_Days', 'Recovery_Days']].mean().sort_values('Treatment_Days', ascending=False)
