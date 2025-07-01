@@ -194,7 +194,7 @@ plt.close()
 plt.figure(figsize=(10, 6))
 sns.violinplot(x='Gender', y='Age', data=df, inner='quartile', palette='pastel')
 plt.title('Age Distribution by Gender')
-plt.savefig(static_path + "age_gender_dist.png")
+plt.savefig(static_path + "age_distribution.png")
 plt.close()
 
 # 9. Average Recovery Time by Diagnosis (Top 10)
