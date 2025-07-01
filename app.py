@@ -132,77 +132,79 @@ sns.set(style="whitegrid")
 sns.set_palette("pastel")
 
 # EDA
-# Distribution of Age, Treatment Days, Recovery Days, and SAT
+# Set static directory path
+static_path = "static/"
+
+# 1. Distribution plots
 df[['Age', 'Treatment_Days', 'Recovery_Days', 'SAT']].hist(figsize=(10, 6), bins=20)
 plt.suptitle("Distributions of Age, Treatment & Recovery Days, and SAT")
 plt.tight_layout()
-plt.show()
+plt.savefig(static_path + "dist_plots.png")
+plt.close()
 
-# Heart Rate vs Diagnosis
+# 2. Heart Rate vs Diagnosis
 plt.figure(figsize=(6,4))
 sns.boxplot(x='Diagnosis', y='Heart_Rate', data=df)
 plt.title("Heart Rate across Diagnoses")
-plt.show()
-# Insight: Certain diagnoses show significant deviations in heart rate.
+plt.savefig(static_path + "heart_rate_diagnosis.png")
+plt.close()
 
-# Temperature vs Diagnosis
+# 3. Temperature vs Diagnosis
 plt.figure(figsize=(6,4))
 sns.violinplot(x='Diagnosis', y='Temperature', data=df)
 plt.title("Temperature by Diagnosis Type")
-plt.show()
-# Insight: Some illnesses like infections may show higher temperatures.
+plt.savefig(static_path + "temp_diagnosis.png")
+plt.close()
 
-# Correlation heatmap
-num_cols = ['Age', 'Systolic', 'Diastolic', 'Heart_Rate', 'Temperature', 'Treatment_Days', 'Recovery_Days', 'SAT', 'FamilyHistory']
-sns.heatmap(df[num_cols].corr(), annot=True, cmap='coolwarm'); plt.title("Correlation Heatmap"); plt.show()
+# 4. Correlation heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(df[num_cols].corr(), annot=True, cmap='coolwarm')
+plt.title("Correlation Heatmap")
+plt.savefig(static_path + "correlation_heatmap.png")
+plt.close()
 
-# Scatterplot: Treatment vs Recovery
+# 5. Scatterplot: Treatment vs Recovery
+plt.figure(figsize=(6,4))
 sns.scatterplot(data=df, x='Treatment_Days', y='Recovery_Days', hue='Age_Group')
 plt.title("Treatment Duration vs Recovery Time by Age Group")
 plt.xlabel("Treatment Days")
 plt.ylabel("Recovery Days")
-plt.show()
+plt.savefig(static_path + "treatment_vs_recovery.png")
+plt.close()
 
-# Gender Distribution
+# 6. Gender Distribution
 plt.figure(figsize=(6,4))
 sns.countplot(data=df, x='Gender', palette='Set2')
 plt.title("Patient Gender Distribution")
 plt.xlabel("Gender")
 plt.ylabel("Count")
-plt.show()
+plt.savefig(static_path + "gender_dist.png")
+plt.close()
 
-# Diagnosis Distribution (Top 10)
-top_diagnoses = df['Diagnosis'].value_counts().head(10)
-print("\nTop 10 Diagnoses:")
-print(top_diagnoses)
-
-# Boxplot: SAT Score by Age Group
+# 7. SAT Score by Age Group
 plt.figure(figsize=(7,5))
 sns.boxplot(data=df, x='Age_Group', y='SAT', palette='Pastel1')
 plt.title("SAT Scores by Age Group")
 plt.ylabel("Satisfaction Score")
-plt.show()
+plt.savefig(static_path + "sat_age_group.png")
+plt.close()
 
-# Age distribution by Gender
+# 8. Age distribution by Gender
 plt.figure(figsize=(10, 6))
 sns.violinplot(x='Gender', y='Age', data=df, inner='quartile', palette='pastel')
 plt.title('Age Distribution by Gender')
-plt.show()
-df.head()
+plt.savefig(static_path + "age_gender_dist.png")
+plt.close()
 
-# Count of Surgery Types
-surgery_counts = df['Surgery_Type'].value_counts()
-print("\nSurgery Type Counts:")
-print(surgery_counts)
-
-# Average Recovery Time by Diagnosis (Top 10)
+# 9. Average Recovery Time by Diagnosis (Top 10)
 top_diagnoses_index = df['Diagnosis'].value_counts().head(10).index
 avg_recovery = df[df['Diagnosis'].isin(top_diagnoses_index)].groupby('Diagnosis')['Recovery_Days'].mean().sort_values()
 plt.figure(figsize=(10,5))
 sns.barplot(x=avg_recovery.values, y=avg_recovery.index, palette='Blues_d')
 plt.title("Average Recovery Time for Top 10 Diagnoses")
 plt.xlabel("Average Recovery Days")
-plt.show()
+plt.savefig(static_path + "avg_recovery_top10.png")
+plt.close()
 
 # Interactive bar chart for SAT by Doctor
 avg_sat = df.groupby('Doctor_Name')['SAT'].mean().sort_values().reset_index()
