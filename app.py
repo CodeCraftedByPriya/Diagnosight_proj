@@ -62,14 +62,14 @@ def predict():
         recovery_days = reg_model.predict(scaled_input)[0]
 
         return render_template(
-            "webpage.html",
+            "home.html",
             diagnosis=diagnosis,
             recovery=round(recovery_days, 1),
             input=input_data
         )
 
     except Exception as e:
-        return render_template("webpage.html", error=f"Prediction failed: {str(e)}")
+        return render_template("home.html", error=f"Prediction failed: {str(e)}")
 
 if __name__ == "__main__":
     app.run(debug=True)
