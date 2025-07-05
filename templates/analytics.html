@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMART HEALTHCARE PREDICTION - Analytics</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f4f7f8;
+      color: #114b5f;
+    }
+    header {
+      text-align: center;
+      padding: 30px 10px 10px;
+      font-size: 36px;
+      font-weight: 700;
+      background: linear-gradient(90deg, #117a8b, #4a90e2);
+      color: white;
+    }
+    nav {
+      background: #e4f1f4;
+      padding: 10px 0;
+      text-align: center;
+    }
+    nav a {
+      margin: 0 20px;
+      text-decoration: none;
+      font-weight: 600;
+      color: #0b3d91;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 6px 24px rgba(17, 75, 95, 0.1);
+    }
+    h2 {
+      color: #117a8b;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 30px;
+    }
+    .chart-box {
+      background: #f0f7f8;
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+    }
+    .chart-box img {
+      max-width: 100%;
+      border-radius: 12px;
+    }
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      font-style: italic;
+      background: #f4f7f8;
+      color: #117a8b;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <header>SMART HEALTHCARE PREDICTION</header>
+
+  <nav>
+    <a href="{{ url_for('home') }}">Home</a>
+    <a href="{{ url_for('analytics') }}">Analytics</a>
+  </nav>
+
+  <main class="container">
+  <h2>Data Analytics Dashboard</h2>
+  <div class="chart-grid">
+    <div class="chart-box">
+      <h3>Distribution</h3>
+      <img src="static/dist_plots.png" alt="Age Distribution" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3> Temperature Diagnosis</h3>
+      <img src="/static/temp_diagnosis.png" alt="Age by Gender" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Treatment Vs Recovery</h3>
+      <img src="/static/treatment_vs_recovery.png" alt="Treatment Days" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Heart Rate Dignosis</h3>
+      <img src="/static/heart_rate_diagnosis.png" alt="Recovery Days" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Age Distribution by Age</h3>
+      <img src="/static/age_distribution_gen.png" alt="SAT Scores" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>SAT by Age Group</h3>
+      <img src="/static/sat_age_group.png" alt="SAT by Age Group" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Correlation Heatmap</h3>
+      <img src="/static/correlation_heatmap.png" alt="Correlation Heatmap" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Top 10 Diagnosis Avg Recovery</h3>
+      <img src="/static/avg_recovery_top10.png" alt="Top 10 Diagnosis Recovery" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Treatment vs Recovery by Surgery</h3>
+      <img src="/static/treat_time_surgery.png" alt="Treatment vs Recovery by Surgery" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+    <div class="chart-box">
+      <h3>Sentiment Analysis</h3>
+      <img src="/static/sat_dist.png" alt="Sentiment" style="object-fit: cover; width: 100%; height: 300px;" />
+    </div>
+  </div>
+
+  <div class="chart-box" style="margin-top: 40px;">
+    <h3>Interactive: Average SAT Score by Doctor</h3>
+    <iframe src="/static/interactive_sat_doctor.html" width="100%" height="400" style="border:none; border-radius: 12px;"></iframe>
+  </div>
+  <div class="chart-box">
+    <h3>Interactive: Average Recovery Time by Hospital</h3>
+    <iframe src="/static/interactive_recovery_hospital.html" width="100%" height="400" style="border:none; border-radius: 12px;"></iframe>
+  </div>
+
+  <div style="margin-top: 50px; background: #eef5f8; padding: 25px; border-radius: 12px;">
+    <h3 style="color:#117a8b;">Aggregated Insights</h3>
+    <ul style="line-height: 1.8; font-size: 16px; color:#0b3d91;">
+      <li><strong>Top 10 Diagnoses:</strong> Flu, Hypertension, Diabetes, Asthma, Migraine, etc.</li>
+      <li><strong>Common Medications:</strong> Paracetamol, Amoxicillin, Metformin</li>
+      <li><strong>Average Recovery Time:</strong> 12.4 days across all conditions</li>
+      <li><strong>Highest Satisfaction:</strong> Recorded under Dr. Meera at Sunshine Hospital</li>
+      <li><strong>Surgeries with Longest Recovery:</strong> Cardiac Bypass, Hip Replacement</li>
+    </ul>
+  </div>
+</main>
+
+  <footer>
+    "Every step forward is a step toward a healthier tomorrow."
+  </footer>
+</body>
+</html>
