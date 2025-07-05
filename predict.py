@@ -353,33 +353,41 @@ plt.show()
 
 
 
-# Features & targets
-X = df[['Age', 'Gender', 'Heart_Rate', 'Temperature', 'Systolic', 'Diastolic',
-        'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']]
+# Feature Selection & Target Variables
+
+features = ['Age', 'Gender', 'Heart_Rate', 'Temperature',
+            'Systolic', 'Diastolic', 'X-ray_Results',
+            'Lab_Test_Results', 'Hypertension_Risk']
+
+X = df[features]
 y_cls = df['Diagnosis']
 y_reg = df['Recovery_Days']
 
-# Drop rare diagnosis classes (only keep those with ≥ 2 samples)
+# Filter out rare diagnosis classes
 valid_classes = y_cls.value_counts()[y_cls.value_counts() >= 2].index
-X = X[y_cls.isin(valid_classes)].copy()
+X = X[y_cls.isin(valid_classes)]
 y_cls = y_cls[y_cls.isin(valid_classes)]
 y_reg = y_reg.loc[y_cls.index]
 
-# Encode Lab Test Results if categorical
+# Encode Lab Test Results if needed
 if X['Lab_Test_Results'].dtype == 'object':
-    X['Lab_Test_Results'] = LabelEncoder().fit_transform(X['Lab_Test_Results'])
+    le_lab = LabelEncoder()
+    X['Lab_Test_Results'] = le_lab.fit_transform(X['Lab_Test_Results'])
+    joblib.dump(le_lab, 'le_lab.pkl')
 
-# Scale features
+# Standard Scaling
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
+joblib.dump(scaler, 'scaler.pkl')
 
-# Classification split
+
+# Classification: Predicting Diagnosis
+
 sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
 for train_idx, test_idx in sss.split(X_scaled, y_cls):
     X_train_cls, X_test_cls = X_scaled[train_idx], X_scaled[test_idx]
     y_train_cls, y_test_cls = y_cls.iloc[train_idx], y_cls.iloc[test_idx]
 
-# Classification models
 class_models = {
     'RandomForest': RandomForestClassifier(),
     'KNN': KNeighborsClassifier(),
@@ -398,11 +406,14 @@ for name, model in class_models.items():
         best_acc = acc
         best_cls_model = model
 
-# Regression split
+joblib.dump(best_cls_model, 'diagnosis_model.pkl')
+
+
+# Regression: Predicting Recovery Days
+
 X_train_reg, X_test_reg, y_train_reg, y_test_reg = train_test_split(
     X_scaled, y_reg, test_size=0.2, random_state=42)
 
-# Regression models
 reg_models = {
     'RandomForestRegressor': RandomForestRegressor(),
     'XGBoostRegressor': XGBRegressor(),
@@ -423,117 +434,49 @@ for name, model in reg_models.items():
         best_r2 = r2
         best_reg_model = model
 
-# Save models and scaler
-joblib.dump(best_cls_model, 'diagnosis_model.pkl')
 joblib.dump(best_reg_model, 'recovery_model.pkl')
-joblib.dump(scaler, 'scaler.pkl')
 
 
+# Scenario-Based Prediction
 
-# Load models and tools
+# Load the models
 clf_model = joblib.load('diagnosis_model.pkl')
 reg_model = joblib.load('recovery_model.pkl')
 scaler = joblib.load('scaler.pkl')
 
-# Define the feature order
-feature_cols = ['Age', 'Gender', 'Heart_Rate', 'Temperature',
-                'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']
+# Define consistent input order
+feature_cols = features
 
-# --- Scenario 1: Mr. Harry ---
+# Scenario 1: Mr. Harry
 harry_input = {
     'Age': 70,
-    'Gender': 0,  # Male
+    'Gender': 0,
     'Heart_Rate': 60,
     'Temperature': 97,
     'Systolic': 120,
     'Diastolic': 80,
-    'X-ray_Results': 1,  # Abnormal
-    'Lab_Test_Results': 83,
+    'X-ray_Results': 1,
+    'Lab_Test_Results': 83
 }
-harry_input['Hypertension_Risk'] = 1 if (harry_input['Systolic'] >= 130 or harry_input['Diastolic'] >= 80) else 0
-
+harry_input['Hypertension_Risk'] = int(harry_input['Systolic'] >= 130 or harry_input['Diastolic'] >= 80)
 harry_df = pd.DataFrame([harry_input], columns=feature_cols)
 harry_scaled = scaler.transform(harry_df)
 harry_pred = clf_model.predict(harry_scaled)[0]
+print(f"\n--- Scenario 1: Diagnosis for Mr. Harry: {harry_pred}")
 
-print("\n--- Scenario 1: Diagnosis Prediction for Mr. Harry ---")
-print(f"Predicted Diagnosis: {harry_pred}")
-
-# --- Scenario 2: Ms. Reena ---
+# Scenario 2: Ms. Reena
 reena_input = {
     'Age': 40,
-    'Gender': 1,  # Female
+    'Gender': 1,
     'Heart_Rate': 75,
     'Temperature': 98.6,
     'Systolic': 120,
     'Diastolic': 75,
-    'X-ray_Results': 0,  # Normal
-    'Lab_Test_Results': 90,
+    'X-ray_Results': 0,
+    'Lab_Test_Results': 90
 }
-reena_input['Hypertension_Risk'] = 1 if (reena_input['Systolic'] >= 130 or reena_input['Diastolic'] >= 80) else 0
-
+reena_input['Hypertension_Risk'] = int(reena_input['Systolic'] >= 130 or reena_input['Diastolic'] >= 80)
 reena_df = pd.DataFrame([reena_input], columns=feature_cols)
 reena_scaled = scaler.transform(reena_df)
 reena_pred_days = reg_model.predict(reena_scaled)[0]
-
-print("\n--- Scenario 2: Recovery Time Prediction for Ms. Reena ---")
-print(f"Predicted Recovery Time (in days): {round(reena_pred_days, 1)}")
-
-from flask import Flask, request, jsonify, render_template
-import joblib
-import numpy as np
-import os
-
-app = Flask(__name__)
-
-# Load models and scaler
-clf_model = joblib.load("diagnosis_model.pkl")
-reg_model = joblib.load("recovery_model.pkl")
-scaler = joblib.load("scaler.pkl")
-
-# Define the order of input features
-feature_cols = ['Age', 'Gender', 'Heart_Rate', 'Temperature',
-                'Systolic', 'Diastolic', 'X-ray_Results', 'Lab_Test_Results', 'Hypertension_Risk']
-
-@app.route('/')
-def home():
-    return render_template('webpage.html')  # your first page
-
-@app.route('/analytics')
-def analytics():
-    return render_template('analytics.html')  # your second page with charts
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.json
-
-    # Extract and validate values
-    try:
-        features = [
-            data['age'],
-            data['gender'],
-            data['heart_rate'],
-            data['temperature'],
-            data['systolic'],
-            data['diastolic'],
-            data['xray'],
-            data['lab'],
-            data['hypertension_risk']
-        ]
-        input_array = np.array(features).reshape(1, -1)
-        scaled_input = scaler.transform(input_array)
-
-        # Predict
-        diagnosis = clf_model.predict(scaled_input)[0]
-        recovery_days = reg_model.predict(scaled_input)[0]
-
-        return jsonify({
-            'diagnosis': str(diagnosis),
-            'recovery': round(float(recovery_days), 1)
-        })
-
-    except Exception as e:
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
+print(f"--- Scenario 2: Recovery Time for Ms. Reena: {round(reena_pred_days, 1)} days")
